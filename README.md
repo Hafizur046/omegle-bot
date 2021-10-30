@@ -1,11 +1,11 @@
 # Omegle Bot to find females
 
-#pre requirements for installation
-Nodejs
-Npm
-Terminal
+pre requirements for installation:
+nodejs,
+npm,
+terminal
 
-#installation:
+installation:
 ```
 git clone https://github.com/hafizur046/omegle-female-finder
 ```
@@ -13,7 +13,7 @@ git clone https://github.com/hafizur046/omegle-female-finder
 npm i
 ```
 
-#run the application:
+run the application:
 ```
 node index.js
 ```
