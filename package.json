@@ -10,7 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "express": "^4.17.1",
     "node-fetch": "^3.0.0",
-    "serverline": "^1.5.0"
+    "serverline": "^1.5.0",
+    "socket.io": "^4.4.0"
   }
 }

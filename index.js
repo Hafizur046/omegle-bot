@@ -1,7 +1,94 @@
 import fetch, { Headers } from "node-fetch";
 import myRL from "serverline";
-//const readline = require("readline");
-//import readline from "readline";
+
+//const express = require("express");
+import express from "express";
+
+const app = express();
+
+app.use(express.static("./public"));
+
+//const { Server } = require("socket.io");
+import { Server } from "socket.io";
+
+//global state
+let globalClientId = "";
+let globalInterest = "japan";
+let applicationEnabled = false;
+let globalStarterMessage = "Hey, m here";
+
+//socket.io shits
+
+let server = app.listen(3000);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
+//io.listen(80);
+
+io.on("connection", (socket) => {
+  //doAsyncShit();
+
+  socket.on("message", (message) => {
+    io.emit("message", `You: ${message}`);
+    if (message === "!help") {
+      io.emit(
+        "message",
+        "available commands: !status `!set $interest` !start !end !kill !stop"
+      );
+    }
+    if (message === "!status") {
+      //io.emit("message", "---------------------------------------------");
+      io.emit("message", `interest: ${globalInterest}`);
+      io.emit("message", ` applicationEnabled: ${applicationEnabled}`);
+      //io.emit("message", "---------------------------------------------");
+      return;
+    }
+    if (message === "!start") {
+      applicationEnabled = true;
+      doAsyncShit();
+      return;
+    }
+    if (message.split(" ")[0] === "!set") {
+      globalInterest = message.split(" ")[1];
+      io.emit("message", `API: Current interest is ${globalInterest}`);
+      return;
+    }
+    if (message === "!greeting") {
+      io.emit("message", `You: ${globalStarterMessage}`);
+      return;
+    }
+    if (message.split(" ")[0] === "!greeting") {
+      let wordArray = message.split(" ");
+      wordArray.shift();
+      //console.log(wordArray);
+      globalStarterMessage = wordArray.reduce((prev, current) => {
+        return prev + " " + current;
+      });
+      io.emit("message", `API: Current greeting is "${globalStarterMessage}"`);
+      return;
+    }
+    if (message === "!end") {
+      applicationEnabled = false;
+      return;
+    }
+    if (message === "!kill") {
+      disconnect(globalClientId);
+      return;
+    }
+    sendMessage(globalClientId, message);
+  });
+  socket.on("start-typing", () => {
+    startTyping(globalClientId);
+  });
+  socket.on("stop-typing", () => {
+    endTypinng(globalClientId);
+  });
+});
 
 process.stdout.write("\x1Bc");
 console.log(Array(process.stdout.rows + 1).join("\n"));
@@ -9,7 +96,7 @@ console.log(Array(process.stdout.rows + 1).join("\n"));
 //const myRL = require("serverline");
 
 var myHeaders = new Headers();
-myHeaders.append("Host", "front1.omegle.com");
+myHeaders.append("Host", "front25.omegle.com");
 myHeaders.append("Sec-Ch-Ua", '"Chromium";v="91", " Not;A Brand";v="99"');
 myHeaders.append("Accept", "application/json");
 myHeaders.append("Sec-Ch-Ua-Mobile", "?0");
@@ -36,25 +123,27 @@ var requestOptions = {
 
 async function doAsyncShit() {
   let response = await fetch(
-    "https://front1.omegle.com/start?caps=recaptcha2,t&firstevents=1&spid=&randid=xnxx&topics=%5B%22japan%22%2C%22dhaka%22%5D&lang=bn",
+    `https://front25.omegle.com/start?caps=recaptcha2,t&firstevents=1&spid=&randid=xnxx&topics=%5B%22${globalInterest}%22%2C%22dhaka%22%5D&lang=bn`,
     requestOptions
   );
 
   let resBody = await response.json();
-  console.log(resBody);
 
-  if (resBody.events[0][0] === "recaptchaRequired") {
-    doAsyncShit();
+  if (resBody.events && resBody.events[0][0] === "recaptchaRequired") {
+    applicationEnabled && doAsyncShit();
+    return;
+  }
+  if (resBody.events && resBody.events[0][0] === "antinudeBanned") {
+    applicationEnabled && doAsyncShit();
     return;
   }
 
+  // this globalClientId is used by the socket server to send messages received from the socket.io - client
+  globalClientId = resBody.clientID;
+
   mainEventHandler(resBody.clientID, 0);
-  //sendMessage(resBody.clientID, "hey, f 17 Bangladesh");
-  //
   keepAddingShit(resBody.clientID);
 }
-
-doAsyncShit();
 
 async function mainEventHandler(clientid, n) {
   var urlencoded = new URLSearchParams();
@@ -68,15 +157,16 @@ async function mainEventHandler(clientid, n) {
   };
 
   let response = await fetch(
-    "https://front1.omegle.com/events",
+    "https://front25.omegle.com/events",
     requestOptions
   );
   let responseBody = await response.json();
   if (Array.isArray(responseBody)) {
     responseBody.forEach((event) => {
       if (event[0] === "connected") {
-        console.log("Connected!");
-        sendMessage(clientid, "Hey, m here");
+        io.emit("message", "Connected!");
+        sendMessage(clientid, globalStarterMessage);
+        //sendMessage(resBody.clientID, "hey, f 17 Bangladesh");
       }
       if (event[0] === "gotMessage") {
         //console.log("\n");
@@ -86,7 +176,7 @@ async function mainEventHandler(clientid, n) {
           message.search("Telegram") !== -1 ||
           message.search("TELEGRAM") !== -1
         ) {
-          console.log("bot detected!");
+          io.emit("message", "bot detected!");
           disconnect(clientid);
           //doAsyncShit();
           return;
@@ -97,23 +187,27 @@ async function mainEventHandler(clientid, n) {
             message.search("M") !== -1 ||
             message.search("male") !== -1)
         ) {
-          console.log("male detected!");
+          io.emit("message", "male detected!");
           disconnect(clientid);
           //doAsyncShit();
           //return;
         }
-        console.log(`Stranger: ${event[1]}`);
+        io.emit("message", `Stranger: ${event[1]}`);
       }
       if (event[0] === "typing") {
         //console.log("\n");
-        console.log(`Stranger: Typing....`);
+        io.emit("message", `Stranger: Typing....`);
+      }
+      if (event[0] === "strangerDisconnected") {
+        io.emit("message", "Stranger Dissconnected!");
+        applicationEnabled && doAsyncShit();
+        return;
       }
     });
   }
-
   if (responseBody === null) {
-    console.log("Stranger Dissconnected!");
-    doAsyncShit();
+    //console.log("Stranger Dissconnected!");
+    //doAsyncShit();
     return;
   }
 
@@ -134,13 +228,12 @@ async function sendMessage(clientid, message) {
     redirect: "follow",
   };
 
-  await fetch("https://front1.omegle.com/send", requestOptions);
+  await fetch("https://front25.omegle.com/send", requestOptions);
 }
 
 myRL.init();
 
-async function disconnect(clientID) {
-  console.log("disconnecting...");
+async function startTyping(clientID) {
   var urlencoded = new URLSearchParams();
   urlencoded.append("id", clientID);
 
@@ -150,13 +243,51 @@ async function disconnect(clientID) {
     body: urlencoded,
     redirect: "follow",
   };
-  await fetch("https://front1.omegle.com/disconnect", requestOptions);
+
+  let response = await fetch(
+    "https://front25.omegle.com/typing",
+    requestOptions
+  );
+  await response.text();
+}
+
+async function endTypinng(clientID) {
+  var urlencoded = new URLSearchParams();
+  urlencoded.append("id", clientID);
+
+  var requestOptions = {
+    method: "POST",
+    headers: myHeaders,
+    body: urlencoded,
+    redirect: "follow",
+  };
+
+  let response = await fetch(
+    "https://front25.omegle.com/stoppedtyping",
+    requestOptions
+  );
+  await response.text();
+}
+
+async function disconnect(clientID) {
+  var urlencoded = new URLSearchParams();
+  urlencoded.append("id", clientID);
+
+  var requestOptions = {
+    method: "POST",
+    headers: myHeaders,
+    body: urlencoded,
+    redirect: "follow",
+  };
+  await fetch("https://front25.omegle.com/disconnect", requestOptions);
+  io.emit("message", "You have disconnected.");
+  applicationEnabled && doAsyncShit();
 }
 
 function keepAddingShit(clientID) {
   myRL.getRL().question("Type: ", function (message) {
     if (message === "kill") {
-      console.log("heck yeah");
+      //console.log("heck yeah");
       disconnect(clientID);
       return;
     }
