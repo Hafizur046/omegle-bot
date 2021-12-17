@@ -123,7 +123,7 @@ var requestOptions = {
 
 async function doAsyncShit() {
   let response = await fetch(
-    `https://front25.omegle.com/start?caps=recaptcha2,t&firstevents=1&spid=&randid=xnxx&topics=%5B%22${globalInterest}%22%2C%22dhaka%22%5D&lang=bn`,
+    `https://front25.omegle.com/start?caps=recaptcha2,t&firstevents=1&spid=&randid=xnxx&topics=%5B%22${globalInterest}%22%5D&lang=bn`,
     requestOptions
   );
 
