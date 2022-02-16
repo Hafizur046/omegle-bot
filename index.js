@@ -12,6 +12,7 @@ app.use(express.static("./public"));
 import { Server } from "socket.io";
 
 //global state
+let noInterest = false;
 let globalClientId = "";
 let globalInterest = "japan";
 let applicationEnabled = false;
@@ -34,6 +35,8 @@ io.on("connection", (socket) => {
   //doAsyncShit();
 
   socket.on("message", (message) => {
+    //message = String(message);
+    console.log(message);
     io.emit("message", `You: ${message}`);
     if (message === "!help") {
       io.emit(
@@ -43,7 +46,10 @@ io.on("connection", (socket) => {
     }
     if (message === "!status") {
       //io.emit("message", "---------------------------------------------");
-      io.emit("message", `interest: ${globalInterest}`);
+      io.emit(
+        "message",
+        `interest: ${globalInterest}, enabled: ${!noInterest}`
+      );
       io.emit("message", ` applicationEnabled: ${applicationEnabled}`);
       //io.emit("message", "---------------------------------------------");
       return;
@@ -51,6 +57,11 @@ io.on("connection", (socket) => {
     if (message === "!start") {
       applicationEnabled = true;
       doAsyncShit();
+      return;
+    }
+    if (message === "!togglein") {
+      noInterest = !noInterest;
+      io.emit("message", `Interest ${noInterest ? "disabled" : "enabled"}!`);
       return;
     }
     if (message.split(" ")[0] === "!set") {
@@ -122,166 +133,200 @@ var requestOptions = {
 };
 
 async function doAsyncShit() {
-  let response = await fetch(
-    `https://front25.omegle.com/start?caps=recaptcha2,t&firstevents=1&spid=&randid=xnxx&topics=%5B%22${globalInterest}%22%5D&lang=bn`,
-    requestOptions
-  );
+  try {
+    let response = await fetch(
+      `https://front25.omegle.com/start?caps=recaptcha2,t&firstevents=1&spid=&randid=jasdf${
+        noInterest ? "" : `&topics=%5B%22${globalInterest}%22%5D`
+      }&lang=bn`,
+      requestOptions
+    );
 
-  let resBody = await response.json();
+    let resBody = await response.json();
 
-  if (resBody.events && resBody.events[0][0] === "recaptchaRequired") {
-    applicationEnabled && doAsyncShit();
-    return;
+    if (resBody.events && resBody.events[0][0] === "recaptchaRequired") {
+      applicationEnabled && doAsyncShit();
+      return;
+    }
+    if (resBody.events && resBody.events[0][0] === "antinudeBanned") {
+      applicationEnabled && doAsyncShit();
+      return;
+    }
+
+    // this globalClientId is used by the socket server to send messages received from the socket.io - client
+    globalClientId = resBody.clientID;
+
+    mainEventHandler(resBody.clientID, 0);
+    keepAddingShit(resBody.clientID);
+  } catch (err) {
+    console.log(err);
+    io.send("message", String(err));
   }
-  if (resBody.events && resBody.events[0][0] === "antinudeBanned") {
-    applicationEnabled && doAsyncShit();
-    return;
-  }
-
-  // this globalClientId is used by the socket server to send messages received from the socket.io - client
-  globalClientId = resBody.clientID;
-
-  mainEventHandler(resBody.clientID, 0);
-  keepAddingShit(resBody.clientID);
 }
 
 async function mainEventHandler(clientid, n) {
-  var urlencoded = new URLSearchParams();
-  urlencoded.append("id", clientid);
+  try {
+    var urlencoded = new URLSearchParams();
+    urlencoded.append("id", clientid);
 
-  var requestOptions = {
-    method: "POST",
-    headers: myHeaders,
-    body: urlencoded,
-    redirect: "follow",
-  };
+    var requestOptions = {
+      method: "POST",
+      headers: myHeaders,
+      body: urlencoded,
+      redirect: "follow",
+    };
 
-  let response = await fetch(
-    "https://front25.omegle.com/events",
-    requestOptions
-  );
-  let responseBody = await response.json();
-  if (Array.isArray(responseBody)) {
-    responseBody.forEach((event) => {
-      if (event[0] === "connected") {
-        io.emit("message", "Connected!");
-        sendMessage(clientid, globalStarterMessage);
-        //sendMessage(resBody.clientID, "hey, f 17 Bangladesh");
-      }
-      if (event[0] === "gotMessage") {
-        //console.log("\n");
-        let message = event[1];
-        if (
-          message.search("telegram") !== -1 ||
-          message.search("Telegram") !== -1 ||
-          message.search("TELEGRAM") !== -1
-        ) {
-          io.emit("message", "bot detected!");
-          disconnect(clientid);
-          //doAsyncShit();
+    let response = await fetch(
+      "https://front25.omegle.com/events",
+      requestOptions
+    );
+    let responseBody = await response.json();
+    if (Array.isArray(responseBody)) {
+      responseBody.forEach((event) => {
+        if (event[0] === "connected") {
+          io.emit("message", "Connected!");
+          sendMessage(clientid, globalStarterMessage);
+          //sendMessage(resBody.clientID, "hey, f 17 Bangladesh");
+        }
+        if (event[0] === "gotMessage") {
+          //console.log("\n");
+          let message = event[1];
+          if (
+            message.search("telegram") !== -1 ||
+            message.search("Telegram") !== -1 ||
+            message.search("TELEGRAM") !== -1
+          ) {
+            io.emit("message", "bot detected!");
+            disconnect(clientid);
+            //doAsyncShit();
+            return;
+          }
+          if (
+            (n === 1 || n === 0) &&
+            (message.search("m") !== -1 ||
+              message.search("M") !== -1 ||
+              message.search("male") !== -1)
+          ) {
+            io.emit("message", "male detected!");
+            disconnect(clientid);
+            //doAsyncShit();
+            //return;
+          }
+          io.emit("message", `Stranger: ${event[1]}`);
+        }
+        if (event[0] === "typing") {
+          io.emit("started-typing");
+        }
+        if (event[0] === "stoppedTyping") {
+          io.emit("stopped-typing");
+        }
+        if (event[0] === "strangerDisconnected") {
+          io.emit("message", "Stranger Dissconnected!");
+          applicationEnabled && doAsyncShit();
           return;
         }
-        if (
-          (n === 1 || n === 0) &&
-          (message.search("m") !== -1 ||
-            message.search("M") !== -1 ||
-            message.search("male") !== -1)
-        ) {
-          io.emit("message", "male detected!");
-          disconnect(clientid);
-          //doAsyncShit();
-          //return;
-        }
-        io.emit("message", `Stranger: ${event[1]}`);
-      }
-      if (event[0] === "typing") {
-        //console.log("\n");
-        io.emit("message", `Stranger: Typing....`);
-      }
-      if (event[0] === "strangerDisconnected") {
-        io.emit("message", "Stranger Dissconnected!");
-        applicationEnabled && doAsyncShit();
-        return;
-      }
-    });
-  }
-  if (responseBody === null) {
-    //console.log("Stranger Dissconnected!");
-    //doAsyncShit();
-    return;
-  }
+      });
+    }
+    if (responseBody === null) {
+      //console.log("Stranger Dissconnected!");
+      //doAsyncShit();
+      return;
+    }
 
-  //console.log("\n");
-  //console.log(responseBody);
-  mainEventHandler(clientid, n + 1);
+    //console.log("\n");
+    //console.log(responseBody);
+    mainEventHandler(clientid, n + 1);
+  } catch (err) {
+    console.log(err);
+    io.send("message", String(err));
+  }
 }
 
 async function sendMessage(clientid, message) {
-  var urlencoded = new URLSearchParams();
-  urlencoded.append("id", clientid);
-  urlencoded.append("msg", message);
+  try {
+    var urlencoded = new URLSearchParams();
+    urlencoded.append("id", clientid);
+    urlencoded.append("msg", message);
 
-  var requestOptions = {
-    method: "POST",
-    headers: myHeaders,
-    body: urlencoded,
-    redirect: "follow",
-  };
+    var requestOptions = {
+      method: "POST",
+      headers: myHeaders,
+      body: urlencoded,
+      redirect: "follow",
+    };
 
-  await fetch("https://front25.omegle.com/send", requestOptions);
+    await fetch("https://front25.omegle.com/send", requestOptions);
+  } catch (err) {
+    console.log(err);
+    io.send("message", String(err));
+  }
 }
 
 myRL.init();
 
 async function startTyping(clientID) {
-  var urlencoded = new URLSearchParams();
-  urlencoded.append("id", clientID);
+  try {
+    var urlencoded = new URLSearchParams();
+    urlencoded.append("id", clientID);
 
-  var requestOptions = {
-    method: "POST",
-    headers: myHeaders,
-    body: urlencoded,
-    redirect: "follow",
-  };
+    var requestOptions = {
+      method: "POST",
+      headers: myHeaders,
+      body: urlencoded,
+      redirect: "follow",
+    };
 
-  let response = await fetch(
-    "https://front25.omegle.com/typing",
-    requestOptions
-  );
-  await response.text();
+    let response = await fetch(
+      "https://front25.omegle.com/typing",
+      requestOptions
+    );
+    await response.text();
+  } catch (err) {
+    console.log(err);
+    io.send("message", String(err));
+  }
 }
 
 async function endTypinng(clientID) {
-  var urlencoded = new URLSearchParams();
-  urlencoded.append("id", clientID);
+  try {
+    var urlencoded = new URLSearchParams();
+    urlencoded.append("id", clientID);
 
-  var requestOptions = {
-    method: "POST",
-    headers: myHeaders,
-    body: urlencoded,
-    redirect: "follow",
-  };
+    var requestOptions = {
+      method: "POST",
+      headers: myHeaders,
+      body: urlencoded,
+      redirect: "follow",
+    };
 
-  let response = await fetch(
-    "https://front25.omegle.com/stoppedtyping",
-    requestOptions
-  );
-  await response.text();
+    let response = await fetch(
+      "https://front25.omegle.com/stoppedtyping",
+      requestOptions
+    );
+    await response.text();
+  } catch (err) {
+    console.log(err);
+    io.send("message", String(err));
+  }
 }
 
 async function disconnect(clientID) {
-  var urlencoded = new URLSearchParams();
-  urlencoded.append("id", clientID);
+  try {
+    var urlencoded = new URLSearchParams();
+    urlencoded.append("id", clientID);
 
-  var requestOptions = {
-    method: "POST",
-    headers: myHeaders,
-    body: urlencoded,
-    redirect: "follow",
-  };
-  await fetch("https://front25.omegle.com/disconnect", requestOptions);
-  io.emit("message", "You have disconnected.");
-  applicationEnabled && doAsyncShit();
+    var requestOptions = {
+      method: "POST",
+      headers: myHeaders,
+      body: urlencoded,
+      redirect: "follow",
+    };
+    await fetch("https://front25.omegle.com/disconnect", requestOptions);
+    io.emit("message", "You have disconnected.");
+    applicationEnabled && doAsyncShit();
+  } catch (err) {
+    console.log(err);
+    io.send("message", String(err));
+  }
 }
 
 function keepAddingShit(clientID) {

@@ -1,4 +1,4 @@
-# Omegle Bot to find females
+# Omegle Bot to easily find people interested to chat with yo
 
 pre requirements for installation:
 nodejs,
