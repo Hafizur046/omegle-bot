@@ -107,8 +107,8 @@ io.on("connection", (socket) => {
   });
 });
 
-process.stdout.write("\x1Bc");
-console.log(Array(process.stdout.rows + 1).join("\n"));
+//process.stdout.write("\x1Bc");
+//console.log(Array(process.stdout.rows + 1).join("\n"));
 
 //const myRL = require("serverline");
 
