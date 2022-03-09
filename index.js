@@ -45,13 +45,13 @@ io.on("connection", (socket) => {
       );
     }
     if (message === "!status") {
-      //io.emit("message", "---------------------------------------------");
+      io.emit("message", "---------------------------------------------");
       io.emit(
         "message",
         `interest: ${globalInterest}, enabled: ${!noInterest}`
       );
       io.emit("message", ` applicationEnabled: ${applicationEnabled}`);
-      //io.emit("message", "---------------------------------------------");
+      io.emit("message", "---------------------------------------------");
       return;
     }
     if (message === "!start") {
@@ -61,12 +61,16 @@ io.on("connection", (socket) => {
     }
     if (message === "!togglein") {
       noInterest = !noInterest;
+      io.emit("message", "---------------------------------------------");
       io.emit("message", `Interest ${noInterest ? "disabled" : "enabled"}!`);
+      io.emit("message", "---------------------------------------------");
       return;
     }
     if (message.split(" ")[0] === "!set") {
       globalInterest = message.split(" ")[1];
+      io.emit("message", "---------------------------------------------");
       io.emit("message", `API: Current interest is ${globalInterest}`);
+      io.emit("message", "---------------------------------------------");
       return;
     }
     if (message === "!greeting") {
@@ -80,7 +84,9 @@ io.on("connection", (socket) => {
       globalStarterMessage = wordArray.reduce((prev, current) => {
         return prev + " " + current;
       });
+      io.emit("message", "---------------------------------------------");
       io.emit("message", `API: Current greeting is "${globalStarterMessage}"`);
+      io.emit("message", "---------------------------------------------");
       return;
     }
     if (message === "!end") {
