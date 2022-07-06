@@ -7,7 +7,7 @@ terminal
 
 installation:
 ```
-git clone https://github.com/hafizur046/omegle-female-finder
+git clone https://github.com/hafizur046/omegle-bot
 ```
 ```
 npm i
