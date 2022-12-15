@@ -1,15 +1,12 @@
 import fetch, { Headers } from "node-fetch";
-import myRL from "serverline";
-
-//const express = require("express");
 import express from "express";
+import { Server } from "socket.io";
+
+//constants
+const PORT = process.env["PORT"] || 3000;
 
 const app = express();
-
 app.use(express.static("./public"));
-
-//const { Server } = require("socket.io");
-import { Server } from "socket.io";
 
 //global state
 let noInterest = false;
@@ -18,9 +15,12 @@ let globalInterest = "japan";
 let applicationEnabled = false;
 let globalStarterMessage = "Hey, m here";
 
-//socket.io shits
-
-let server = app.listen(3000);
+const server = app.listen(PORT, (err) => {
+  if (err) return;
+  console.log("Started successfully! ");
+  console.log("You can now view frontend in the browser.\n");
+  console.log("http://localhost:" + PORT);
+});
 
 const io = new Server(server, {
   cors: {
@@ -29,13 +29,8 @@ const io = new Server(server, {
   },
 });
 
-//io.listen(80);
-
 io.on("connection", (socket) => {
-  //doAsyncShit();
-
   socket.on("message", (message) => {
-    //message = String(message);
     console.log(message);
     io.emit("message", `You: ${message}`);
     if (message === "!help") {
@@ -110,8 +105,6 @@ io.on("connection", (socket) => {
 //process.stdout.write("\x1Bc");
 //console.log(Array(process.stdout.rows + 1).join("\n"));
 
-//const myRL = require("serverline");
-
 var myHeaders = new Headers();
 myHeaders.append("Host", "front25.omegle.com");
 myHeaders.append("Sec-Ch-Ua", '"Chromium";v="91", " Not;A Brand";v="99"');
@@ -158,11 +151,10 @@ async function doAsyncShit() {
       return;
     }
 
-    // this globalClientId is used by the socket server to send messages received from the socket.io - client
+    // this globalClientId is used by the socket server to send
+    // messages received from the socket.io - client
     globalClientId = resBody.clientID;
-
     mainEventHandler(resBody.clientID, 0);
-    keepAddingShit(resBody.clientID);
   } catch (err) {
     console.log(err);
     io.send("message", String(err));
@@ -267,8 +259,6 @@ async function sendMessage(clientid, message) {
   }
 }
 
-myRL.init();
-
 async function startTyping(clientID) {
   try {
     var urlencoded = new URLSearchParams();
@@ -334,20 +324,3 @@ async function disconnect(clientID) {
     io.send("message", String(err));
   }
 }
-
-function keepAddingShit(clientID) {
-  myRL.getRL().question("Type: ", function (message) {
-    if (message === "kill") {
-      //console.log("heck yeah");
-      disconnect(clientID);
-      return;
-    }
-    console.log(`You: ${message}`);
-    sendMessage(clientID, message);
-    keepAddingShit(clientID);
-  });
-}
-
-//.then((response) => response.json())
-//.then((result) => console.log(result))
-//.catch((error) => console.log("error", error));
