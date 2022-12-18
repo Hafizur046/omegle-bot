@@ -134,7 +134,7 @@ var requestOptions = {
 async function doAsyncShit() {
   try {
     let response = await fetch(
-      `https://front25.omegle.com/start?caps=recaptcha2,t&firstevents=1&spid=&randid=jasdf${
+      `https://front25.omegle.com/start?caps=recaptcha2,t2&firstevents=1&spid=&randid=jasdf${
         noInterest ? "" : `&topics=%5B%22${globalInterest}%22%5D`
       }&lang=bn`,
       requestOptions
