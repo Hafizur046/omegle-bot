@@ -50,7 +50,7 @@ class Omegle {
 
       this.state = "connected";
       this.eventEmitter.emit("connected");
-      this.sendMessage(this.starterMessage);
+      await this.sendMessage(this.starterMessage);
       this.clientId = resBody.clientID;
       this.mainEventHandler(this.eventEmitter);
       return;
