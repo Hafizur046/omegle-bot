@@ -33,8 +33,12 @@ omegle.eventEmitter.on("strangerDisconnected", async () => {
   omegle.applicationEnabled && (await omegle.connect());
   return;
 });
-omegle.eventEmitter.on("message", (message) => {
+omegle.eventEmitter.on("message", async (message, messageIndex) => {
   io.emit("message", `Stranger: ${message}`);
+  if (messageIndex == 0 && isBot(message)) {
+    io.emit("message", "Bot detected! Disconnecting...");
+    await omegle.disconnect();
+  }
   return;
 });
 omegle.eventEmitter.on("typing", () => {
@@ -45,6 +49,20 @@ omegle.eventEmitter.on("stoppedTyping", () => {
   io.emit("stopped-typing");
   return;
 });
+
+function isBot(message) {
+  message = message.toLowerCase();
+  return (
+    message.includes("m") ||
+    message.includes("http") ||
+    message.includes("www") ||
+    message.includes("telegram") ||
+    message.includes("snap") ||
+    message.includes("snaap") ||
+    message.includes("@") ||
+    message.includes("kik")
+  );
+}
 
 //handle frontend events from socket.io
 async function messageHandler(message) {
