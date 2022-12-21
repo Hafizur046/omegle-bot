@@ -193,8 +193,8 @@ class Omegle {
       await fetch(`${this.serverAddress}/disconnect`, requestOptions);
       this.applicationEnabled && this.connect();
     } catch (err) {
-      console.log(err);
-      io.send("message", String(err));
+      console.error(err);
+      this.eventEmitter.emit("message", String(err));
     }
   }
 }
