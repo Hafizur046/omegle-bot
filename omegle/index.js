@@ -14,6 +14,7 @@ class Omegle {
     this.state = "running";
     this.applicationEnabled = true;
     this.eventEmitter = new EventEmmitter();
+    this.messageIndex = 0;
   }
 
   async connect() {
@@ -48,6 +49,7 @@ class Omegle {
         return;
       }
 
+      this.messageIndex = 0;
       this.state = "connected";
       this.eventEmitter.emit("connected");
       await this.sendMessage(this.starterMessage);
@@ -85,7 +87,8 @@ class Omegle {
       const eventHandlers = {
         gotMessage: (event) => {
           const message = event[1];
-          emitter.emit("message", message);
+          emitter.emit("message", message, this.messageIndex);
+          this.messageIndex++;
         },
         typing: () => {
           emitter.emit("typing");
