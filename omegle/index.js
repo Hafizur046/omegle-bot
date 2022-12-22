@@ -30,7 +30,7 @@ class Omegle {
           this.serverAddress
         }/start?caps=recaptcha2,t2&firstevents=1&spid=&randid=${this.randId}${
           !this.interest ? "" : `&topics=%5B%22${this.interest}%22%5D`
-        }&lang=en`,
+        }&cc=2f67e107645d1121bbf774489831ba392139cea2&lang=en`,
         requestOptions
       );
 
