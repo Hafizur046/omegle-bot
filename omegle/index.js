@@ -15,6 +15,31 @@ class Omegle {
     this.applicationEnabled = true;
     this.eventEmitter = new EventEmmitter();
     this.messageIndex = 0;
+    this.eventHandlers = {
+      connected: async () => {
+        this.messageIndex = 0;
+        this.state = "connected";
+        this.eventEmitter.emit("connected");
+        await this.sendMessage(this.starterMessage);
+        this.mainEventHandler(this.eventEmitter);
+      },
+      gotMessage: (event) => {
+        const message = event[1];
+        this.eventEmitter.emit("message", message, this.messageIndex);
+        this.messageIndex++;
+      },
+      typing: () => {
+        this.eventEmitter.emit("typing");
+      },
+      stoppedTyping: () => {
+        this.eventEmitter.emit("stoppedTyping");
+      },
+      strangerDisconnected: () => {
+        console.log("disconnected!");
+        this.eventEmitter.emit("strangerDisconnected");
+        this.strangerDisconnected = true;
+      },
+    };
   }
 
   async connect() {
@@ -38,6 +63,8 @@ class Omegle {
 
       //reconnect if asked for captcha or presented antinudeBanned,
       //continiously trying to connect bypasses these
+      const eventName = resBody.events?.[0][0];
+      const event = resBody.events?.[0][1];
       if (resBody.events && resBody.events[0][0] === "recaptchaRequired") {
         console.log("captcha!");
         this.applicationEnabled && this.connect();
@@ -49,12 +76,10 @@ class Omegle {
         return;
       }
 
-      this.messageIndex = 0;
-      this.state = "connected";
-      this.eventEmitter.emit("connected");
-      await this.sendMessage(this.starterMessage);
       this.clientId = resBody.clientID;
-      this.mainEventHandler(this.eventEmitter);
+      this.eventHandlers[eventName] &&
+        (await this.eventHandlers[eventName](event));
+
       return;
     } catch (err) {
       throw err;
@@ -83,31 +108,13 @@ class Omegle {
         return;
       }
 
-      let strangerDisconnected = false;
-      const eventHandlers = {
-        gotMessage: (event) => {
-          const message = event[1];
-          emitter.emit("message", message, this.messageIndex);
-          this.messageIndex++;
-        },
-        typing: () => {
-          emitter.emit("typing");
-        },
-        stoppedTyping: () => {
-          emitter.emit("stoppedTyping");
-        },
-        strangerDisconnected: () => {
-          console.log("disconnected!");
-          emitter.emit("strangerDisconnected");
-          strangerDisconnected = true;
-        },
-      };
+      this.strangerDisconnected = false;
 
       responseBody.forEach(async (event) => {
         const eventName = event[0];
-        eventHandlers[eventName] && eventHandlers[eventName](event);
+        this.eventHandlers[eventName] && this.eventHandlers[eventName](event);
       });
-      if (strangerDisconnected) return;
+      if (this.strangerDisconnected) return;
 
       //recursively call mainEventHandler to keep listening to new events
       this.mainEventHandler(emitter);
