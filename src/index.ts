@@ -8,7 +8,7 @@ import Omegle from "./omegle/index.js";
 const PORT = process.env["PORT"] || 3000;
 
 const app = express();
-// app.use(express.static("public/"));
+app.use(express.static("public/"));
 
 const server = app.listen(PORT, () => {
   // if (err) return;
