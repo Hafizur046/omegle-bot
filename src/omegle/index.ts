@@ -1,19 +1,37 @@
 import fetch from "node-fetch";
 import omegleDefaultHeader from "./headers.js";
-import EventEmmitter from "events";
+import {EventEmitter} from "events";
+
+interface EventHandlers {
+  connected: Function;
+  gotMessage: Function;
+  typing: Function;
+  stoppedTyping: Function;
+  strangerDisconnected: Function;
+}
 
 class Omegle {
-  constructor(server) {
-    this.serverAddress = server || "https://front41.omegle.com";
+  noInterest: boolean;
+  clientId: string;
+  applicationEnabled: boolean;
+  randId: string;
+  starterMessage: string;
+  state: string;
+  eventEmitter: EventEmitter;
+  messageIndex: number;
+  eventHandlers: EventHandlers;
+  strangerDisconnected!: boolean;
+
+  constructor(public serverAddress?: string, public interest?: string) {
+    this.serverAddress = "https://front41.omegle.com";
     this.noInterest = false;
     this.clientId = "";
-    this.interest;
     this.applicationEnabled = false;
     this.randId = "HFMANNL5";
     this.starterMessage = "Hey, m here";
     this.state = "running";
     this.applicationEnabled = true;
-    this.eventEmitter = new EventEmmitter();
+    this.eventEmitter = new EventEmitter();
     this.messageIndex = 0;
     this.eventHandlers = {
       connected: async () => {
@@ -23,7 +41,7 @@ class Omegle {
         await this.sendMessage(this.starterMessage);
         this.mainEventHandler(this.eventEmitter);
       },
-      gotMessage: (event) => {
+      gotMessage: (event: [string, string]) => {
         const message = event[1];
         this.eventEmitter.emit("message", message, this.messageIndex);
         this.messageIndex++;
@@ -47,7 +65,6 @@ class Omegle {
       const requestOptions = {
         method: "POST",
         headers: omegleDefaultHeader,
-        redirect: "follow",
       };
 
       const response = await fetch(
@@ -59,11 +76,11 @@ class Omegle {
         requestOptions
       );
 
-      const resBody = await response.json();
+      const resBody: any = await response.json();
 
       //reconnect if asked for captcha or presented antinudeBanned,
       //continiously trying to connect bypasses these
-      const eventName = resBody.events?.[0][0];
+      const eventName: string = resBody.events?.[0][0];
       const event = resBody.events?.[0][1];
       if (resBody.events && resBody.events[0][0] === "recaptchaRequired") {
         console.log("captcha!");
@@ -77,8 +94,8 @@ class Omegle {
       }
 
       this.clientId = resBody.clientID;
-      this.eventHandlers[eventName] &&
-        (await this.eventHandlers[eventName](event));
+      if ((this.eventHandlers as any)[eventName])
+        await (this.eventHandlers as any)[eventName](event);
 
       return;
     } catch (err) {
@@ -86,7 +103,7 @@ class Omegle {
     }
   }
 
-  async mainEventHandler(emitter) {
+  async mainEventHandler(emitter: EventEmitter) {
     try {
       const urlencoded = new URLSearchParams();
       urlencoded.append("id", this.clientId);
@@ -95,7 +112,6 @@ class Omegle {
         method: "POST",
         headers: omegleDefaultHeader,
         body: urlencoded,
-        redirect: "follow",
       };
 
       const response = await fetch(
@@ -111,8 +127,9 @@ class Omegle {
       this.strangerDisconnected = false;
 
       responseBody.forEach(async (event) => {
-        const eventName = event[0];
-        this.eventHandlers[eventName] && this.eventHandlers[eventName](event);
+        const eventName: string = event[0];
+        if ((this.eventHandlers as any)[eventName])
+          await (this.eventHandlers as any)[eventName](event);
       });
       if (this.strangerDisconnected) return;
 
@@ -124,27 +141,25 @@ class Omegle {
     }
   }
 
-  async sendMessage(message, clientid = this.clientId) {
+  async sendMessage(message: string, clientId = this.clientId) {
     try {
       var urlencoded = new URLSearchParams();
-      urlencoded.append("id", this.clientId);
+      urlencoded.append("id", clientId || this.clientId);
       urlencoded.append("msg", message);
 
       var requestOptions = {
         method: "POST",
         headers: omegleDefaultHeader,
         body: urlencoded,
-        redirect: "follow",
       };
 
       await fetch(`${this.serverAddress}/send`, requestOptions);
     } catch (err) {
       console.log(err);
-      io.send("message", String(err));
     }
   }
 
-  async startTyping(clientId) {
+  async startTyping(clientId?: string) {
     try {
       const urlencoded = new URLSearchParams();
       urlencoded.append("id", clientId || this.clientId);
@@ -153,7 +168,6 @@ class Omegle {
         method: "POST",
         headers: omegleDefaultHeader,
         body: urlencoded,
-        redirect: "follow",
       };
 
       const response = await fetch(
@@ -165,7 +179,7 @@ class Omegle {
       throw err;
     }
   }
-  async stopTyping(clientId) {
+  async stopTyping(clientId?: string) {
     try {
       const urlencoded = new URLSearchParams();
       urlencoded.append("id", clientId || this.clientId);
@@ -174,7 +188,6 @@ class Omegle {
         method: "POST",
         headers: omegleDefaultHeader,
         body: urlencoded,
-        redirect: "follow",
       };
 
       const response = await fetch(
@@ -186,7 +199,7 @@ class Omegle {
       throw err;
     }
   }
-  async disconnect(clientId) {
+  async disconnect(clientId?: string) {
     try {
       var urlencoded = new URLSearchParams();
       urlencoded.append("id", clientId || this.clientId);
@@ -195,7 +208,6 @@ class Omegle {
         method: "POST",
         headers: omegleDefaultHeader,
         body: urlencoded,
-        redirect: "follow",
       };
       await fetch(`${this.serverAddress}/disconnect`, requestOptions);
       this.applicationEnabled && this.connect();

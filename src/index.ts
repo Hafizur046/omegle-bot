@@ -1,15 +1,17 @@
+// import * as express from "express";
 import express from "express";
 import { Server } from "socket.io";
 import Omegle from "./omegle/index.js";
+// import Omegle from "./omegle/index.js";
 
 //constants
 const PORT = process.env["PORT"] || 3000;
 
 const app = express();
-app.use(express.static("./public"));
+// app.use(express.static("public/"));
 
-const server = app.listen(PORT, (err) => {
-  if (err) return;
+const server = app.listen(PORT, () => {
+  // if (err) return;
   console.log("Started successfully! ");
   console.log("You can now view frontend in the browser.\n");
   console.log("http://localhost:" + PORT);
@@ -50,7 +52,7 @@ omegle.eventEmitter.on("stoppedTyping", () => {
   return;
 });
 
-function isBot(message) {
+function isBot(message: String) {
   message = message.toLowerCase();
   return (
     message.includes("m") ||
@@ -65,7 +67,7 @@ function isBot(message) {
 }
 
 //handle frontend events from socket.io
-async function messageHandler(message) {
+async function messageHandler(message: string) {
   io.emit("message", `You: ${message}`);
   if (message === "!help") {
     io.emit(
