@@ -37,11 +37,9 @@ omegle.eventEmitter.on("strangerDisconnected", async () => {
 });
 omegle.eventEmitter.on("message", async (message, messageIndex) => {
   io.emit("message", `Stranger: ${message}`);
-  if (messageIndex == 0 && isBot(message)) {
-    io.emit("message", "Bot detected! Disconnecting...");
-    await omegle.disconnect();
-  }
-  return;
+  if (messageIndex !== 0 || !isBot(message)) return;
+  io.emit("message", "Bot detected Disconnecting...");
+  return await omegle.disconnect();
 });
 omegle.eventEmitter.on("typing", () => {
   io.emit("started-typing");
