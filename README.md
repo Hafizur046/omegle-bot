@@ -18,5 +18,5 @@ npm i
 
 run the application:
 ```
-node start
+npm run dev
 ```
